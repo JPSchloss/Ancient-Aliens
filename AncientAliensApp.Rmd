@@ -1,0 +1,370 @@
+---
+title: "Ancient Aliens"
+runtime: shiny
+output: 
+  flexdashboard::flex_dashboard:
+    social: menu
+    source_code: embed
+    orientation: columns
+    vertical_layout: fill
+    css: styles.css
+    
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(dplyr)
+library(tidytext)
+library(ggplot2)
+library(scales)
+library(tidyverse)
+
+# Loading in all stemmed words and the airdate assocaited with the episode they are in. 
+Stemmmed_Words_Time <- read.csv("./Data/Stemmmed_Words_Time.csv")
+Stemmmed_Words_Time$AirDate = as.Date(Stemmmed_Words_Time$AirDate, "%Y-%m-%d")
+
+# Preparing Word Choices
+WordChoices <- data.frame('word' = sort(unique(Stemmmed_Words_Time$WordStem)))
+WordChoices <- WordChoices %>%
+  filter(!word %in% tidytext::stop_words)
+
+# Loading In Word Count Data
+Stem_Word_Props <- read.csv("./Data/Stem_Word_Props.csv")
+
+# Loading In Word Count Data By Episode
+Stem_Episode_Word_Props <- read.csv("./Data/Stem_Episode_Word_Props.csv")
+
+# Loading In TF-IDF Dataset
+Stem_Episode_tfidf <- read.csv("./Data/Stem_Episode_tfidf.csv")
+
+#Topics and Gamma Datasets
+Stem_Topics <- read.csv("./Data/Stem_Topics.csv")
+Stem_Gamma <- read.csv("./Data/Stem_Gamma.csv")
+
+# Loading in the Episode/Topic Datasets
+Episode_Dates <- read.csv("./Data/Episode_Dates.csv")
+Episode_Dates$Date = as.Date(Episode_Dates$Date, "%Y-%m-%d")
+
+#Setting Colors
+manual_colors = c('#005228', '#00651B', '#007707', '#0E8800', '#339900', '#67A922', '#95B844', '#BCC666',
+                  '#888888', '#000000', '#666666', '#444444', '#222222', '#005228', '#00651B', '#007707', 
+                  '#0E8800', '#339900', '#67A922', '#95B844', '#BCC666', '#888888', '#000000', '#666666', 
+                  '#444444', '#222222')
+```
+
+
+
+Analysis Overview {}
+====================================================================
+
+
+
+### {data-height=200}
+<B style='color: black;'>
+<center><h2> Ancient Aliens, Conspiracy Theories, and Alt-Right Rhetoric: </h2>
+<h3> Does conspiracy theory television promote extremist rhetoric? </h3>
+<h5> Built and Prepared By: Jonathan Schlosser </h5></center>
+
+<h4 style='text-indent: 50px;'>
+This application was built to explore the scripts of the television show Ancient 
+Aliens. Alt-right actors tend to exploit conspiracy spaces to radicalize individuals 
+towards hateful beliefs. The work here questions the extent that alt-right rhetoric
+may be present within one of the most recognizable conspiracy shows, Ancient Aliens. 
+
+
+Topic modeling was used throughout these analyses. Topic modeling is a method 
+for unsupervised classification of text documents to identify latent "topics". 
+This app explores the results of a structural topic model and two LDA topic models 
+(VEM and Gibbs) for the first 15 season of Ancient Aliens. These models are 
+quite popular in the computational social science research community although they 
+are not the most advanced natural language processing models available. 
+
+
+The structural topic model was ultimately used in the analysis. This topic model 
+allows for partial associations of topics to be considered and allows documents 
+to appear in multiple topics. The LDA VEM model allows for this as well but models
+the content differently and doesn't do too well with highly complex documents. The Gibbs
+alternative is used mainly for short texts but was included here just as a comparison. 
+The two LDA models did not reveal as clean of results as the STM approach. 
+
+</h4>
+
+<h4>
+Some of the interesting findings include topics related to "alt-right" themes, including:
+
+<ul>
+  <li> Idolization of a Primordial Past </li>
+    <ul>
+      <li> Topic 3, Topic 13, Topic 14, Topic 15, Topic 18, Topic 20, Topic 24 </li>
+    </ul>
+  <li> Expressing Fears Around Difference </li>
+    <ul>
+      <Li> Topic 8, Topic 9, Topic 21, Topic 26 </li>
+    </ul>
+  <li> Suspicion of Government </li>
+    <ul>
+      <Li> Topic 2, Topic 10, Topic 12, Topic 19  </li>
+    </ul>
+  <li> A Belief in Warfare or Taking Action for Action's Sake</li>
+    <ul>
+      <Li> Topic 4, Topic 6, Topic 7  </li>
+    </ul>
+  <li> Worship of Technology </li>
+    <ul>
+      <Li> Topic 5, Topic 11, Topic 23, Topic 25  </li>
+    </ul>
+</ul>
+</h4>
+</B>
+
+
+```{r}
+
+
+
+```
+
+
+
+Top Terms All Episodes {data-navmenu="Top Terms"}
+====================================================================
+
+
+
+```{r}
+fillCol(height = 800, flex = c(NA, 1),
+  inputPanel(
+    selectizeInput("ResultLimit1", "Set Result Limit", choices = c(10, 20, 30, 40, 50), selected = 10),
+    radioButtons("CountProp1", "Choose One:",
+               c("Count" = "Count",
+                 "Proportion" = "Proportion"), selected = "Count", inline = TRUE)
+  ),
+  plotOutput("WordCountPlot1", height = "100%")
+)
+
+output$WordCountPlot1 <- renderPlot({
+  Stem_Word_Props %>% 
+    top_n(as.integer(input$ResultLimit1), !!as.name(input$CountProp1)) %>%
+    mutate(StemmedWord = reorder(StemmedWord, !!as.name(input$CountProp1))) %>%
+    ggplot(aes(StemmedWord, !!as.name(input$CountProp1), fill = !!as.name(input$CountProp1))) +
+    geom_col() +
+    geom_text(aes(label = StemmedWord, y = 0), hjust = 0,
+            color = "brown3", size = 5) +
+    geom_text(aes(label = round(!!as.name(input$CountProp1), 6)), hjust = 1,
+            color = "brown3", size = 5) +
+    scale_fill_gradient(low = 'black', high = 'chartreuse1') +
+    coord_flip() +
+    theme_minimal(base_size = 18) +
+    theme(axis.text.y=element_blank()) +
+    labs(x = NULL, y = input$CountProp1, fill = "Title", title = paste("Top", input$ResultLimit1, "Terms Within All Episodes -", input$CountProp1))+
+    guides(fill=FALSE)
+})
+```
+
+
+
+Top Terms By Episode {data-navmenu="Top Terms"}
+====================================================================
+
+
+
+```{r}
+fillCol(height = 800, flex = c(NA, 1),
+  inputPanel(
+    selectizeInput("Episode2", "Choose an episode:", choices = unique(Stem_Episode_Word_Props$EpisodeTitle)),
+    selectizeInput("n2", "Set Result Limit", choices = c(10, 20, 30, 40, 50), selected = 10),
+    radioButtons("CountProp2", "Choose One:",
+               c("Count" = "Count",
+                 "Proportion" = "Proportion"), selected = "Count", inline = TRUE)
+  ),
+  plotOutput("WordCountPlot2", height = "100%")
+)
+
+output$WordCountPlot2 <- renderPlot({
+  Stem_Episode_Word_Props %>% 
+    filter(EpisodeTitle == input$Episode2) %>%
+    top_n(as.integer(input$n2), !!as.name(input$CountProp2)) %>%
+    mutate(StemmedWord = reorder(StemmedWord, !!as.name(input$CountProp2))) %>%
+    ggplot(aes(StemmedWord, !!as.name(input$CountProp2), fill = !!as.name(input$CountProp2))) +
+    geom_col() +
+    geom_text(aes(label = StemmedWord, y = 0), hjust = 0,
+            color = "brown3", size = 5) +
+    geom_text(aes(label = round(!!as.name(input$CountProp2), 6)), hjust = 1,
+            color = "brown3", size = 5) +
+    scale_fill_gradient(low = 'black', high = 'chartreuse1') +
+    coord_flip() +
+    theme_minimal(base_size = 18) +
+    theme(axis.text.y=element_blank()) +
+    labs(x = NULL, y = input$CountProp2, fill = "Title", title = paste("Top", input$n2, "Terms Within", input$Episode2, "-", input$CountProp2))+
+    guides(fill=FALSE)
+})
+```
+
+
+
+Episodes In Each Topic {data-navmenu="Topic Models"}
+====================================================================
+
+
+
+```{r}
+
+fillCol(height = 800, flex = c(NA, 1), 
+  inputPanel(
+    radioButtons("ModelType4", "Choose a model",
+               c("STM" = "STM",
+                 "Gibbs" = "Gibbs",
+                 "VEM" = "VEM"), selected = "STM", inline = TRUE),
+    selectizeInput("topic4", "Choose a topic", choices = c(1:26)),
+    selectizeInput("n4", "Set Result Limit", choices = c(10, 20, 30, 40, 50), selected = 10)
+  ),
+  plotOutput("TopicPlot4", height = "100%")
+)
+
+
+output$TopicPlot4 <- renderPlot({
+   Stem_Gamma %>% 
+    filter(Model == input$ModelType4) %>%
+    filter(Topic == as.integer(input$topic4)) %>%
+    top_n(as.integer(input$n4), Gamma) %>%
+    mutate(EpisodeTitle = reorder(EpisodeTitle, Gamma)) %>%
+    ggplot(aes(EpisodeTitle, Gamma, fill = Gamma)) +
+    geom_col() +
+    geom_text(aes(label = EpisodeTitle, y = 0), hjust = 0,
+            color = "brown3", size = 5) +
+    geom_text(aes(label = round(Gamma, 6)), hjust = 1,
+            color = "brown3", size = 5) +
+    scale_y_continuous(expand = c(0,0),
+                       labels = percent_format()) +
+    scale_fill_gradient(low = 'black', high = 'chartreuse1') +
+    coord_flip() +
+    theme_minimal(base_size = 18) +
+    theme(axis.text.y=element_blank()) +
+    labs(x = NULL, y = expression(gamma), fill = "Title", title = paste("Top", input$n4, "Episodes Within Topic", input$topic4, "-", input$ModelType4))+
+    guides(fill=FALSE)
+})
+
+```
+
+
+
+Terms In Each Topic {data-navmenu="Topic Models"}
+====================================================================
+
+
+
+```{r}
+
+fillCol(height = 800, flex = c(NA, 1), 
+  inputPanel(
+    radioButtons("ModelType5", "Choose a model",
+               c("STM" = "STM",
+                 "Gibbs" = "Gibbs",
+                 "VEM" = "VEM"), selected = "STM", inline = TRUE),
+    selectizeInput("topic5", "Choose a topic", choices = c(1:26)),
+    selectizeInput("n5", "Set Result Limit", choices = c(10, 20, 30, 40, 50), selected = 10)
+  ),
+  plotOutput("TopicPlot5", height = "100%")
+)
+
+
+output$TopicPlot5 <- renderPlot({
+   Stem_Topics %>% 
+    filter(Model == input$ModelType5) %>%
+    filter(Topic == as.integer(input$topic5)) %>%
+    top_n(as.integer(input$n5), Beta) %>%
+    mutate(Term = reorder(Term, Beta)) %>%
+    ggplot(aes(Term, Beta, fill = Beta)) +
+    geom_col() +
+    geom_text(aes(label = Term, y = 0), hjust = 0,
+            color = "brown3", size = 5) +
+    geom_text(aes(label = round(Beta, 6)), hjust = 1,
+            color = "brown3", size = 5) +
+    scale_y_continuous(expand = c(0,0),
+                       labels = percent_format()) +
+    scale_fill_gradient(low = 'black', high = 'chartreuse1') +
+    coord_flip() +
+    theme_minimal(base_size = 18) +
+    theme(axis.text.y=element_blank()) +
+    labs(x = NULL, y = expression(Beta), fill = "Title", title = paste("Top", input$n5, "Terms Within Topic", input$topic5, "-", input$ModelType5))+
+    guides(fill=FALSE)
+})
+
+```
+
+
+
+Term Timeline {data-navmenu="Timelines"}
+====================================================================
+
+
+
+```{r}
+
+fillCol(height = 800, flex = c(NA, 1),
+  inputPanel(
+    selectizeInput("word3", "Choose A Word", choices = WordChoices, selected = "nazi", multiple = TRUE)
+  ),
+  plotOutput("WordTimePlot3", height = "100%")
+)
+
+output$WordTimePlot3 <- renderPlot({
+  Stemmmed_Words_Time %>%
+    group_by(AirDate) %>%
+    count(WordStem, sort = TRUE) %>%
+    filter(WordStem == input$word3) %>%
+    ungroup() %>%
+    mutate(WordStem = factor(WordStem)) %>%
+    ggplot(aes(x = AirDate, y = n, group = WordStem, color = WordStem)) +
+    geom_smooth(method = 'lm', show.legend = FALSE, se = FALSE) +  
+    geom_point(show.legend = TRUE) +
+    geom_smooth(aes(x = AirDate, y = n), method = 'lm', show.legend = FALSE, se = TRUE, 
+                colour = 'red', fill = 'chartreuse1', inherit.aes = FALSE) +
+    scale_colour_manual(values = manual_colors) +
+    theme_minimal(base_size = 18) +
+    labs(color = "Stemmed Word", x = NULL, y = 'Term Frequency', title = paste("Count Of Selected Term(s) Over Time"))
+})
+
+
+
+```
+
+
+
+Topic Timeline {data-navmenu="Timelines"}
+====================================================================
+ 
+ 
+ 
+```{r}
+fillCol(height = 600, flex = c(NA, 1),
+  inputPanel(
+    radioButtons("ModelType7", "Choose a model",
+                 c("STM" = "STM",
+                  "Gibbs" = "Gibbs",
+                  "VEM" = "VEM"), selected = "STM", inline = TRUE),
+    selectizeInput("topic7", "Choose A Topic", choices = unique(Episode_Dates$Topic), selected = 1, multiple = TRUE)
+  ),
+  plotOutput("topicPlot7", height = "100%")
+)
+
+output$topicPlot7 <- renderPlot({
+  Episode_Dates %>%
+    filter(Model == input$ModelType7) %>%
+    filter(Gamma > 0.0001) %>%
+    filter(Topic == as.integer(input$topic7)) %>%
+    mutate(Topic = factor(Topic)) %>%
+    ggplot(aes(x = Date, y = Gamma, group = Topic, color = Topic)) +
+    geom_smooth(method = 'lm', show.legend = FALSE, se = FALSE) +  
+    geom_point(show.legend = TRUE) +
+    geom_smooth(aes(x = Date, y = Gamma), method = 'lm', show.legend = FALSE, se = TRUE, 
+                colour = 'red', fill = 'chartreuse1', inherit.aes = FALSE) +
+    scale_colour_manual(values = manual_colors) +
+    scale_y_continuous(expand = c(0,0),
+                       labels = percent_format()) +
+    theme_minimal(base_size = 18) +
+    labs(x = NULL, y = expression(gamma), title = paste("Selected Topic(s) Over Time"))
+})
+
+```
